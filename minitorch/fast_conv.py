@@ -234,7 +234,7 @@ def _tensor_conv2d(
         reverse (bool): anchor weight at top-left or bottom-right
 
     """
-    batch_, out_channels, _, _ = out_shape
+    batch_, out_channels, out_height, out_width = out_shape
     batch, in_channels, height, width = input_shape
     out_channels_, in_channels_, kh, kw = weight_shape
 
@@ -251,7 +251,45 @@ def _tensor_conv2d(
     s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
 
     # TODO: Implement for Task 4.2.
-    raise NotImplementedError("Need to implement for Task 4.2")
+    # raise NotImplementedError("Need to implement for Task 4.2")
+    for i in prange(out_size):
+        # Calculate indices for the output tensor
+        b = i // (out_channels * out_height * out_width)
+        oc = (i // (out_height * out_width)) % out_channels
+        oy = (i // out_width) % out_height
+        ox = i % out_width
+
+        out_val = 0.0
+
+        for ic in range(in_channels):
+            for ky in range(kh):
+                for kx in range(kw):
+                    # Calculate input indices based on reverse flag
+                    in_y = oy + ky if not reverse else oy - ky
+                    in_x = ox + kx if not reverse else ox - kx
+                    if 0 <= in_y < height and 0 <= in_x < width:
+                        in_idx = (
+                            b * s10
+                            + ic * s11
+                            + in_y * s12
+                            + in_x * s13
+                        )
+                        weight_idx = (
+                            oc * s20
+                            + ic * s21
+                            + ky * s22
+                            + kx * s23
+                        )
+                        out_val += input[in_idx] * weight[weight_idx]
+
+        # Compute output index and store result
+        out_idx = (
+            b * out_strides[0]
+            + oc * out_strides[1]
+            + oy * out_strides[2]
+            + ox * out_strides[3]
+        )
+        out[out_idx] = out_val
 
 
 tensor_conv2d = njit(_tensor_conv2d, parallel=True, fastmath=True)
