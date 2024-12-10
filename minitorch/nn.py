@@ -1,10 +1,8 @@
 from typing import Tuple, Optional
 
-from . import operators
 from .autodiff import Context
-from .fast_ops import FastOps
 from .tensor import Tensor
-from .tensor_functions import Function, rand, tensor
+from .tensor_functions import Function, rand
 
 
 # List of functions in this file:
@@ -29,7 +27,7 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     Returns:
     -------
         Tensor of size batch x channel x new_height x new_width x (kernel_height * kernel_width) as well as the new_height and new_width value.
-    
+
     """
     batch, channel, height, width = input.shape
     kh, kw = kernel
@@ -65,7 +63,6 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     return tiled, new_height, new_width
 
 
-
 # TODO: Implement for Task 4.3.
 def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """Perform 2D average pooling on the input tensor.
@@ -78,6 +75,7 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     Returns:
     -------
         Tensor of shape (batch, channel, new_height, new_width) after average pooling.
+
     """
     # Reshape the input using the tile function
     tiled, new_height, new_width = tile(input, kernel)
@@ -86,9 +84,12 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     pooled = tiled.mean(dim=-1)
 
     # Ensure the pooled output matches the expected dimensions
-    pooled = pooled.contiguous().view(input.shape[0], input.shape[1], new_height, new_width)
+    pooled = pooled.contiguous().view(
+        input.shape[0], input.shape[1], new_height, new_width
+    )
 
     return pooled
+
 
 # TODO: Implement for Task 4.4.
 class Max(Function):
@@ -97,13 +98,15 @@ class Max(Function):
         """Max function."""
         ctx.save_for_backward(t1, int(dim.item()))
         return t1.f.max_reduce(t1, int(dim.item()))
+
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Backward method for max."""
         t1, dim = ctx.saved_values
         max_mask = argmax(t1, dim)
         return grad_output * max_mask, 0.0
-    
+
+
 def max(input: Tensor, dim: Optional[int] = None) -> Tensor:
     """Returns the maximum value of the tensor along the specified dimension."""
     if dim is None:
@@ -112,6 +115,7 @@ def max(input: Tensor, dim: Optional[int] = None) -> Tensor:
             input._ensure_tensor(0),
         )
     return Max.apply(input, input._ensure_tensor(dim))
+
 
 def argmax(input: Tensor, dim: Optional[int] = None) -> Tensor:
     """Compute the argmax as a one-hot tensor along the specified dimension.
@@ -132,6 +136,7 @@ def argmax(input: Tensor, dim: Optional[int] = None) -> Tensor:
     else:
         max_vals = input.f.max_reduce(input, dim)
     return input == max_vals
+
 
 def softmax(input: Tensor, dim: int) -> Tensor:
     """Compute the softmax along the specified dimension.
@@ -155,6 +160,7 @@ def softmax(input: Tensor, dim: int) -> Tensor:
     # Normalize by the sum along the specified dimension
     return exp_vals / exp_vals.sum(dim)
 
+
 def logsoftmax(input: Tensor, dim: int) -> Tensor:
     """Compute the log of the softmax along the specified dimension.
 
@@ -166,7 +172,7 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
     Returns:
     -------
         A tensor with the same shape as `input`, representing the logsoftmax probabilities.
-    
+
     """
     # Shift input by its max for numerical stability
     shifted_input = input - max(input, dim)
@@ -176,6 +182,7 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
 
     # Subtract log-sum-exp from shifted input
     return shifted_input - log_sum_exp
+
 
 def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """Perform 2D max pooling on the input tensor.
@@ -196,7 +203,7 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     tiled, new_height, new_width = tile(input, kernel)
 
     # Apply max reduction along the last dimension (kernel elements)
-    pooled = max(tiled,dim=-1)
+    pooled = max(tiled, dim=-1)
 
     return pooled.view(batch, channel, new_height, new_width)
 
@@ -223,5 +230,5 @@ def dropout(input: Tensor, rate: float = 0.5, ignore: bool = False) -> Tensor:
         return input.zeros(input.shape)
     else:
         random_noise = rand(input.shape, backend=input.backend)
-        mask = (random_noise > rate)
+        mask = random_noise > rate
         return input * mask / (1 - rate)  # Scale the remaining values

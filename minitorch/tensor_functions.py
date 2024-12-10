@@ -197,9 +197,11 @@ class Sum(Function):
     @staticmethod
     def forward(ctx: Context, t: Tensor, dim: Tensor) -> Tensor:
         """Sum function."""
-        ctx.save_for_backward(t,)
+        ctx.save_for_backward(
+            t,
+        )
         return t.f.add_reduce(t, int(dim.item()))
-    
+
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """The gradient for the sum function is 1."""
