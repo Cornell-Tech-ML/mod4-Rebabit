@@ -17,7 +17,7 @@ from .tensor_functions import Function, rand
 
 
 def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
-    """Reshape an image tensor for 2D pooling
+    """Reshape an image tensor for 2D pooling by splitting it into smaller tiles (submatrices) corresponding to the kernel size.
 
     Args:
     ----
@@ -26,7 +26,9 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
 
     Returns:
     -------
-        Tensor of size batch x channel x new_height x new_width x (kernel_height * kernel_width) as well as the new_height and new_width value.
+        Tensor of size batch x channel x new_height x new_width x (kernel_height * kernel_width)
+        new_height
+        new_width
 
     """
     batch, channel, height, width = input.shape
@@ -49,7 +51,7 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     )
 
     # Permute to group kernel dimensions together
-    tiled = reshaped.permute(0, 1, 2, 4, 3, 5).contiguous()
+    tiled = reshaped.permute(0, 1, 2, 4, 3, 5).contiguous() # shape: [batch, channel, new_height, new_width, kh, kw]
 
     # Flatten kernel dimensions into a single dimension
     tiled = tiled.contiguous().view(
@@ -81,9 +83,8 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     tiled, new_height, new_width = tile(input, kernel)
 
     # Compute the average along the last dimension (kernel elements)
-    pooled = tiled.mean(dim=-1)
+    pooled = tiled.mean(dim=len(tiled.shape) - 1)
 
-    # Ensure the pooled output matches the expected dimensions
     pooled = pooled.contiguous().view(
         input.shape[0], input.shape[1], new_height, new_width
     )
@@ -135,7 +136,25 @@ def argmax(input: Tensor, dim: Optional[int] = None) -> Tensor:
         max_vals = input.f.max_reduce(input.contiguous().view(input.size), 0)
     else:
         max_vals = input.f.max_reduce(input, dim)
-    return input == max_vals
+
+    # Identify all maximum locations
+    is_max = input == max_vals
+
+    # Check if there are ties (multiple maximum values in the same dimension)
+    if is_max.sum(dim) > 1:
+        # Add small random noise to break ties
+        noise = rand(input.shape) * 1e-6 
+        input_with_noise = input + noise
+
+        # Recompute max values with noise
+        if dim is None:
+            max_vals = input_with_noise.f.max_reduce(input_with_noise.contiguous().view(input_with_noise.size), 0)
+        else:
+            max_vals = input_with_noise.f.max_reduce(input_with_noise, dim)
+
+        is_max = input_with_noise == max_vals
+
+    return is_max
 
 
 def softmax(input: Tensor, dim: int) -> Tensor:
@@ -174,6 +193,9 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
         A tensor with the same shape as `input`, representing the logsoftmax probabilities.
 
     """
+    # \text{LogSoftmax}(x_i) = \log\left(\frac{\exp(x_i)}{\sum_j \exp(x_j)}\right)
+    #                        = x_i - \log\left(\sum_j \exp(x_j)\right)
+
     # Shift input by its max for numerical stability
     shifted_input = input - max(input, dim)
 
@@ -203,7 +225,7 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     tiled, new_height, new_width = tile(input, kernel)
 
     # Apply max reduction along the last dimension (kernel elements)
-    pooled = max(tiled, dim=-1)
+    pooled = max(tiled, dim=len(tiled.shape) - 1)
 
     return pooled.view(batch, channel, new_height, new_width)
 
