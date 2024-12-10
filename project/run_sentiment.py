@@ -35,7 +35,8 @@ class Conv1d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.conv1d(input, self.weights.value) + self.bias.value
 
 
 class CNNSentimentKim(minitorch.Module):
@@ -48,7 +49,7 @@ class CNNSentimentKim(minitorch.Module):
         feature_map_size=100 output channels and [3, 4, 5]-sized kernels
         followed by a non-linear activation function (the paper uses tanh, we apply a ReLu)
     2. Apply max-over-time across each feature map
-    3. Apply a Linear to size C (number of classes) followed by a ReLU and Dropout with rate 25%
+    3. Apply a Linear to size C (number of classes) followed by a Dropout with rate 25%
     4. Apply a sigmoid over the class dimension.
     """
 
@@ -62,14 +63,37 @@ class CNNSentimentKim(minitorch.Module):
         super().__init__()
         self.feature_map_size = feature_map_size
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        self.dropout_rate = dropout
+
+        self.conv1 = Conv1d(embedding_size, feature_map_size, filter_sizes[0])
+        self.conv2 = Conv1d(embedding_size, feature_map_size, filter_sizes[1])
+        self.conv3 = Conv1d(embedding_size, feature_map_size, filter_sizes[2])
+        self.fc = Linear(self.feature_map_size, 1) # C = 1 for binary classification
+        self.max_pool = lambda x: minitorch.max(x, dim=2)
 
     def forward(self, embeddings):
         """
         embeddings tensor: [batch x sentence length x embedding dim]
         """
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        BATCH, _, _ = embeddings.shape
+        embeddings = embeddings.permute(0, 2, 1)  # [batch x embedding_dim x sentence_length]
+        conv1_out = self.conv1(embeddings).relu()
+        conv2_out = self.conv2(embeddings).relu()
+        conv3_out = self.conv3(embeddings).relu()
+
+        # Apply max pooling along the time (sentence) dimension, and extract the feature map
+        pool1_out = self.max_pool(conv1_out) # [batch x feature_map_size x 1]
+        pool2_out = self.max_pool(conv2_out)
+        pool3_out = self.max_pool(conv3_out)
+        combined = (pool1_out + pool2_out + pool3_out).view(BATCH, self.feature_map_size) # [batch x feature_map_size]
+        logits = self.fc(combined)
+        logits = minitorch.dropout(logits, rate=self.dropout_rate, ignore=not self.training)
+        predictions = logits.sigmoid().view(BATCH)
+
+        return predictions
 
 
 # Evaluation helper methods
@@ -113,6 +137,12 @@ def default_log_fn(
     if len(validation_predictions) > 0:
         print(f"Validation accuracy: {validation_accuracy[-1]:.2%}")
         print(f"Best Valid accuracy: {best_val:.2%}")
+    with open("sentiment.txt", "a") as log_file:
+        log_file.write(f"\r\nEpoch {epoch}, loss {train_loss}, train accuracy: {train_accuracy[-1]:.2%}")
+    if len(validation_predictions) > 0:
+        with open("sentiment.txt", "a") as log_file:
+            log_file.write(f", Validation accuracy: {validation_accuracy[-1]:.2%}")
+            log_file.write(f", Best Valid accuracy: {best_val:.2%}")
 
 
 class SentenceSentimentTrain:
