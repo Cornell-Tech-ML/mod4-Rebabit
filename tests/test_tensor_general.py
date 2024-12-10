@@ -181,10 +181,10 @@ if numba.cuda.is_available():
         x = [[random.random() for i in range(32)] for j in range(16)]
         b = minitorch.tensor(x)  # type: ignore
         s = b.sum(1)
-        print("Expected CPU results (s):", s)
+        # print("Expected CPU results (s):", s)
         b2 = minitorch.tensor(x, backend=shared["cuda"])  # type: ignore
         out = b2.sum(1)
-        print("CUDA output tensor (out):", out)
+        # print("CUDA output tensor (out):", out)
         for i in range(16):
             assert_close(s[i, 0], out[i, 0])
 
