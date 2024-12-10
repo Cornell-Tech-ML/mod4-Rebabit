@@ -197,25 +197,17 @@ class Sum(Function):
     @staticmethod
     def forward(ctx: Context, t: Tensor, dim: Tensor) -> Tensor:
         """Sum function."""
-        ctx.save_for_backward(
-            t,
-        )
-        # if dim is not None:
+        ctx.save_for_backward(t,)
         return t.f.add_reduce(t, int(dim.item()))
-        # else:
-        # return t.f.add_reduce(t.contiguous().view(int(operators.prod(t.shape))), 0)
-
+    
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """The gradient for the sum function is 1."""
         (t,) = ctx.saved_values
-        # if dim is not None:
-        # use id_map to reshape the grad_output to the shape of t(input)
-        return grad_output.f.id_map(
-            grad_output, t
-        ), 0.0  # each input needs to return a gradient
-        # else:
-        #     return grad_output.f.id_map(grad_output, t), None
+        return grad_output, 0.0
+        # return grad_output.f.id_map(
+        #     grad_output, t
+        # ), 0.0  # each input needs to return a gradient
 
 
 class LT(Function):
