@@ -51,7 +51,9 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     )
 
     # Permute to group kernel dimensions together
-    tiled = reshaped.permute(0, 1, 2, 4, 3, 5).contiguous() # shape: [batch, channel, new_height, new_width, kh, kw]
+    tiled = reshaped.permute(
+        0, 1, 2, 4, 3, 5
+    ).contiguous()  # shape: [batch, channel, new_height, new_width, kh, kw]
 
     # Flatten kernel dimensions into a single dimension
     tiled = tiled.contiguous().view(
@@ -143,12 +145,14 @@ def argmax(input: Tensor, dim: Optional[int] = None) -> Tensor:
     # Check if there are ties (multiple maximum values in the same dimension)
     if is_max.sum(dim) > 1:
         # Add small random noise to break ties
-        noise = rand(input.shape) * 1e-6 
+        noise = rand(input.shape) * 1e-6
         input_with_noise = input + noise
 
         # Recompute max values with noise
         if dim is None:
-            max_vals = input_with_noise.f.max_reduce(input_with_noise.contiguous().view(input_with_noise.size), 0)
+            max_vals = input_with_noise.f.max_reduce(
+                input_with_noise.contiguous().view(input_with_noise.size), 0
+            )
         else:
             max_vals = input_with_noise.f.max_reduce(input_with_noise, dim)
 

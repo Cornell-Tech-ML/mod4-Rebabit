@@ -89,21 +89,27 @@ def _tensor_conv1d(
 
     # TODO: Implement for Task 4.1.
     # raise NotImplementedError("Need to implement for Task 4.1")
+
+    # Iterate over all elements in the output tensor
     for i in prange(out_size):
-        # Calculate indices for the output tensor
+        # Compute batch, output channel, and width indices for the current output element
         b = i // (out_channels * out_width)
         oc = (i // out_width) % out_channels
         x = i % out_width
 
         out_val = 0.0
 
+        # Accumulate contributions from all input channels and kernel elements
         for ic in range(in_channels):
             for k in range(kw):
-                # Compute input index based on reverse
+                # Determine the input position based on kernel (0~`kw-1`) and reverse flag
                 in_x = x + k if not reverse else x - k
+                # Check if input indices are within bounds
                 if 0 <= in_x < width:
+                    # Compute memory indices for the input and weight
                     in_idx = b * s1[0] + ic * s1[1] + in_x * s1[2]
                     weight_idx = oc * s2[0] + ic * s2[1] + k * s2[2]
+                    # Accumulate the product of the input and weight values
                     out_val += input[in_idx] * weight[weight_idx]
 
         # Compute output index and store the result
@@ -240,7 +246,7 @@ def _tensor_conv2d(
     # TODO: Implement for Task 4.2.
     # raise NotImplementedError("Need to implement for Task 4.2")
     for i in prange(out_size):
-        # Calculate indices for the output tensor
+        # Calculate the batch, output channel, and spatial (height, width) indices
         b = i // (out_channels * out_height * out_width)
         oc = (i // (out_height * out_width)) % out_channels
         oy = (i // out_width) % out_height
@@ -251,7 +257,6 @@ def _tensor_conv2d(
         for ic in range(in_channels):
             for ky in range(kh):
                 for kx in range(kw):
-                    # Calculate input indices based on reverse flag
                     in_y = oy + ky if not reverse else oy - ky
                     in_x = ox + kx if not reverse else ox - kx
                     if 0 <= in_y < height and 0 <= in_x < width:
