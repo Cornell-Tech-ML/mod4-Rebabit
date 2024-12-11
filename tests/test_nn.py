@@ -32,7 +32,39 @@ def test_avg(t: Tensor) -> None:
 @given(tensors(shape=(2, 3, 4)))
 def test_max(t: Tensor) -> None:
     # TODO: Implement for Task 4.4.
-    raise NotImplementedError("Need to implement for Task 4.4")
+    # raise NotImplementedError("Need to implement for Task 4.4")
+
+    # Test max reduction along dimension 2
+    out = minitorch.max(t, dim=2)  # Shape after reduction is (2, 3, 1)
+    for i in range(out.shape[0]):
+        for j in range(out.shape[1]):
+            reduced_value = out[i, j, 0]
+            assert_close(
+                reduced_value,
+                max([t[i, j, k] for k in range(t.shape[2])]),
+            )
+    # Test max reduction along dimension 1
+    out = minitorch.max(t, dim=1)  # Shape after reduction is (2, 1, 4)
+    for i in range(out.shape[0]):
+        for k in range(out.shape[2]):
+            reduced_value = out[i, 0, k]
+            assert_close(
+                reduced_value,
+                max([t[i, j, k] for j in range(t.shape[1])]),
+            )
+
+    # Test max reduction along dimension 0
+    out = minitorch.max(t, dim=0)  # Shape after reduction is (1, 3, 4)
+    for j in range(out.shape[1]):
+        for k in range(out.shape[2]):
+            reduced_value = out[0, j, k]
+            assert_close(
+                reduced_value,
+                max([t[i, j, k] for i in range(t.shape[0])]),
+            )
+
+    t = t + minitorch.rand(t.shape)  # Add noise for gradient stability
+    minitorch.grad_check(lambda x: minitorch.max(x, dim=2), t)
 
 
 @pytest.mark.task4_4

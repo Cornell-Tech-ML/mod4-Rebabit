@@ -42,7 +42,8 @@ class Conv2d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.conv2d(input, self.weights.value) + self.bias.value
 
 
 class Network(minitorch.Module):
@@ -68,11 +69,25 @@ class Network(minitorch.Module):
         self.out = None
 
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        self.conv1 = Conv2d(1, 4, 3, 3)  # Conv2d: 1 input channel, 4 output channels, 3x3 kernel
+        self.conv2 = Conv2d(4, 8, 3, 3)  # Conv2d: 4 input channels, 8 output channels, 3x3 kernel
+        self.fc1 = Linear(392, 64)
+        self.fc2 = Linear(64, C)
+        self.dropout_rate = 0.25
 
     def forward(self, x):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        self.mid = self.conv1(x).relu()
+        self.out = self.conv2(self.mid).relu()
+        x = minitorch.avgpool2d(self.out, (4, 4))
+        x = x.view(BATCH, 392)
+        x = self.fc1(x).relu()
+        x = minitorch.dropout(x, rate=self.dropout_rate, ignore=not self.training)
+        x = self.fc2(x)
+        x = minitorch.logsoftmax(x, dim=1)
+        return x
 
 
 def make_mnist(start, stop):
@@ -89,6 +104,8 @@ def make_mnist(start, stop):
 
 def default_log_fn(epoch, total_loss, correct, total, losses, model):
     print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
+    with open("mnist.txt", "a") as log_file:
+        log_file.write(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total} \r\n")
 
 
 class ImageTrain:
@@ -99,7 +116,7 @@ class ImageTrain:
         return self.model.forward(minitorch.tensor([x], backend=BACKEND))
 
     def train(
-        self, data_train, data_val, learning_rate, max_epochs=500, log_fn=default_log_fn
+        self, data_train, data_val, learning_rate, max_epochs=100, log_fn=default_log_fn
     ):
         (X_train, y_train) = data_train
         (X_val, y_val) = data_val
@@ -171,4 +188,4 @@ class ImageTrain:
 
 if __name__ == "__main__":
     data_train, data_val = (make_mnist(0, 5000), make_mnist(10000, 10500))
-    ImageTrain().train(data_train, data_val, learning_rate=0.01)
+    ImageTrain().train(data_train, data_val, learning_rate=0.005)
